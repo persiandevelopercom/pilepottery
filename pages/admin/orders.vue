@@ -1,0 +1,34 @@
+<script setup lang="ts">
+import { Eye, RotateCw } from 'lucide-vue-next'
+import { formatPrice, type Order } from '../../shared'
+definePageMeta({ layout: 'admin' })
+const { data: orders, refresh } = await useFetch<Order[]>('/api/admin/orders', { headers: adminHeaders() })
+const selected = ref<Order | null>(null), filter = ref('all'), saving = ref(false), error = ref('')
+const fulfillment = ref('new')
+const filtered = computed(() => filter.value === 'all' ? orders.value || [] : (orders.value || []).filter(o => o.payment_status === filter.value))
+const statusName = (s: string) => ({ paid: 'پرداخت موفق', pending: 'در انتظار پرداخت', failed: 'ناموفق', expired: 'منقضی‌شده', cancelled: 'لغوشده' } as Record<string,string>)[s] || s
+const fulfillmentName = (s: string) => ({ new: 'جدید', processing: 'در حال آماده‌سازی', shipped: 'ارسال‌شده', completed: 'تحویل‌شده', review: 'نیازمند بررسی موجودی' } as Record<string,string>)[s] || s
+function show(o: Order) { selected.value = o; fulfillment.value = o.fulfillment_status; error.value = '' }
+async function save() {
+  if (!selected.value) return
+  saving.value = true; error.value = ''
+  try { await $fetch('/api/admin/orders/' + selected.value.id, { method: 'PUT', headers: adminHeaders(), body: { fulfillment_status: fulfillment.value } }); await refresh(); selected.value = orders.value?.find(o => o.id === selected.value?.id) || null }
+  catch (e: any) { error.value = e?.data?.statusMessage || 'ذخیره انجام نشد.' }
+  finally { saving.value = false }
+}
+async function recheck() {
+  if (!selected.value) return
+  saving.value = true; error.value = ''
+  try {
+    const result = await $fetch<{ paid: boolean }>('/api/admin/orders/' + selected.value.id + '/recheck', { method: 'POST', headers: adminHeaders() })
+    await refresh()
+    selected.value = orders.value?.find(o => o.id === selected.value?.id) || null
+    if (!result.paid) error.value = 'پرداخت هنوز از سوی درگاه تأیید نشده است.'
+  } catch (e: any) { error.value = e?.data?.statusMessage || 'استعلام انجام نشد.' }
+  finally { saving.value = false }
+}
+const detailItems = computed(() => { try { return selected.value ? JSON.parse(selected.value.items) as { name:string;quantity:number;price:number }[] : [] } catch { return [] } })
+useSeoMeta({ title: 'سفارش‌ها و پرداخت‌ها | پیله پاتری', robots: 'noindex' })
+</script>
+<template><div class="admin-heading"><div><h1 class="admin-title">سفارش‌ها و پرداخت‌ها</h1><p class="admin-desc">پرداخت‌ها از درگاه تأیید می‌شوند؛ وضعیت آماده‌سازی را اینجا مدیریت کنید.</p></div><button class="admin-secondary refresh-btn" @click="refresh()"><RotateCw :size="15"/> به‌روزرسانی</button></div><div class="admin-filters"><button v-for="f in [{key:'all',label:'همه'},{key:'paid',label:'پرداخت‌شده'},{key:'pending',label:'در انتظار'},{key:'failed',label:'ناموفق'},{key:'expired',label:'منقضی‌شده'}]" :key="f.key" :class="{active:filter===f.key}" @click="filter=f.key">{{ f.label }}</button></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>شماره سفارش</th><th>مشتری</th><th>تاریخ ثبت</th><th>مبلغ</th><th>پرداخت</th><th>ارسال</th><th></th></tr></thead><tbody><tr v-for="o in filtered" :key="o.id"><td dir="ltr">{{ o.code }}</td><td><strong>{{ o.customer_name }}</strong></td><td>{{ o.created_at }}</td><td>{{ formatPrice(o.total) }} تومان</td><td><span class="pill" :class="o.payment_status==='paid' ? '' : o.payment_status==='pending' ? 'warn' : 'danger'">{{ statusName(o.payment_status) }}</span></td><td>{{ fulfillmentName(o.fulfillment_status) }}</td><td><button @click="show(o)"><Eye :size="14"/> جزئیات</button></td></tr></tbody></table><div v-if="!filtered.length" class="admin-empty">سفارشی در این بخش وجود ندارد.</div></div><div v-if="selected" class="admin-modal-backdrop" @click.self="selected=null"><div class="admin-modal"><div class="admin-modal-head"><h2>جزئیات سفارش <span dir="ltr">{{ selected.code }}</span></h2><button aria-label="بستن" @click="selected=null">×</button></div><div class="order-detail-list"><div><span>نام مشتری</span><strong>{{ selected.customer_name }}</strong></div><div><span>موبایل</span><strong dir="ltr">{{ selected.mobile }}</strong></div><div><span>آدرس ارسال</span><strong>{{ selected.city }}، {{ selected.address }}</strong></div><div v-if="selected.postal_code"><span>کد پستی</span><strong>{{ selected.postal_code }}</strong></div><div><span>وضعیت پرداخت</span><span class="pill" :class="selected.payment_status==='paid'?'':'warn'">{{ statusName(selected.payment_status) }}</span></div><div v-if="selected.ref_id"><span>کد پیگیری درگاه</span><strong dir="ltr">{{ selected.ref_id }}</strong></div></div><h3 class="detail-subtitle">محصولات سفارش</h3><div v-for="item in detailItems" :key="item.name" class="detail-item"><span>{{ item.name }} × {{ item.quantity }}</span><span>{{ formatPrice(item.price * item.quantity) }} تومان</span></div><div class="detail-total"><span>جمع پرداختی</span><strong>{{ formatPrice(selected.total) }} تومان</strong></div><div v-if="selected.payment_status==='paid'" class="fulfillment-box"><label class="form-field">وضعیت آماده‌سازی و ارسال <select v-model="fulfillment"><option value="new">جدید</option><option value="processing">در حال آماده‌سازی</option><option value="shipped">ارسال‌شده</option><option value="completed">تحویل‌شده</option><option value="review">نیازمند بررسی موجودی</option></select></label><p v-if="error" class="error-msg">{{ error }}</p><button class="admin-primary" :disabled="saving" @click="save">{{ saving ? 'در حال ذخیره...' : 'ذخیره وضعیت' }}</button></div><div v-else class="unpaid-note"><p>وضعیت پرداخت فقط با تأیید سرور زرین‌پال تغییر می‌کند و از پنل قابل ویرایش نیست.</p><button v-if="selected.authority" class="admin-secondary" :disabled="saving" @click="recheck">{{ saving ? 'در حال استعلام...' : 'استعلام دوباره از زرین‌پال' }}</button><p v-if="error" class="error-msg">{{ error }}</p></div></div></div></template>
+<style scoped>.refresh-btn{display:flex;align-items:center;gap:7px}.order-detail-list{display:flex;flex-direction:column;gap:13px;border-bottom:1px solid #eceee9;padding-bottom:25px}.order-detail-list>div{display:flex;gap:20px;justify-content:space-between;font-size:12px;line-height:1.9}.order-detail-list>div>span:first-child{color:#899387;min-width:100px}.order-detail-list strong{font-weight:500;text-align:left}.detail-subtitle{font-size:14px;font-weight:600;margin:25px 0 12px}.detail-item,.detail-total{display:flex;justify-content:space-between;padding:8px 0;font-size:12px}.detail-total{border-top:1px solid #e8ebe4;margin-top:8px;padding-top:17px;font-size:14px}.fulfillment-box{background:#f5f7f2;margin-top:25px;padding:17px;display:flex;align-items:end;gap:15px;flex-wrap:wrap}.fulfillment-box .form-field{flex:1;min-width:180px}.fulfillment-box .error-msg{width:100%;order:3}.unpaid-note{font-size:11px;color:#8c978c;margin-top:25px;line-height:2}</style>
