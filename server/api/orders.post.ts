@@ -4,7 +4,6 @@ import { gatewayConfigured, requestPayment } from '../utils/payment'
 import type { Product } from '../../shared'
 export default defineEventHandler(async event => {
   assertSameOrigin(event)
-  if (!gatewayConfigured()) throw createError({ statusCode: 503, statusMessage: 'درگاه پرداخت هنوز فعال نشده است. لطفاً بعداً تلاش کنید.' })
   const body = await readBody(event)
   const name = String(body?.name || '').trim().slice(0, 100)
   const mobile = String(body?.mobile || '').trim()
@@ -21,6 +20,11 @@ export default defineEventHandler(async event => {
     quantities.set(id, (quantities.get(id) || 0) + qty)
   }
   if ([...quantities.values()].some(q => q > 20)) throw createError({ statusCode: 400, statusMessage: 'تعداد محصول نامعتبر است.' })
+  for (const id of quantities.keys()) {
+    const priced = db().prepare('SELECT price FROM products WHERE id = ? AND active = 1').get(id) as { price: number } | undefined
+    if (priced && priced.price <= 0) throw createError({ statusCode: 400, statusMessage: 'قیمت برخی از اقلام هنوز مشخص نشده و امکان ثبت سفارش آن‌ها نیست. برای استعلام قیمت با ما در تماس باشید.' })
+  }
+  if (!gatewayConfigured()) throw createError({ statusCode: 503, statusMessage: 'درگاه پرداخت هنوز فعال نشده است. لطفاً بعداً تلاش کنید.' })
   expireOrders()
   const code = newOrderCode()
   const order = db().transaction(() => {
@@ -28,7 +32,9 @@ export default defineEventHandler(async event => {
     const snapshot = []
     for (const [id, quantity] of quantities) {
       const p = db().prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(id) as Product | undefined
-      if (!p || p.stock < quantity) throw createError({ statusCode: 409, statusMessage: 'موجودی یکی از محصولات کافی نیست. سبد خود را بررسی کنید.' })
+      if (!p) throw createError({ statusCode: 409, statusMessage: 'یکی از محصولات سبد دیگر در دسترس نیست.' })
+      if (p.price <= 0) throw createError({ statusCode: 400, statusMessage: 'قیمت برخی از اقلام هنوز مشخص نشده و امکان ثبت سفارش آن‌ها نیست. برای استعلام قیمت با ما در تماس باشید.' })
+      if (p.stock < quantity) throw createError({ statusCode: 409, statusMessage: 'موجودی یکی از محصولات کافی نیست. سبد خود را بررسی کنید.' })
       db().prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(quantity, id)
       total += p.price * quantity
       snapshot.push({ id, name: p.name, image: p.image, price: p.price, quantity })

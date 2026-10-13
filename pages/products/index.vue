@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft, MoveDown } from 'lucide-vue-next'
 import type { Product } from '../../shared'
-import { categories, categoryName, formatPrice } from '../../shared'
+import { categories, categoryName, priceLabel } from '../../shared'
 
 type Tone = { bg: string; ink: string; soft: string; dark: boolean }
 type GSAP = typeof import('gsap').gsap
@@ -343,7 +343,7 @@ useSeoMeta({
             <h1 v-if="index === 0" class="story-title story-reveal" :class="{ 'is-long': product.name.length > 14 }">{{ product.name }}</h1>
             <h2 v-else class="story-title story-reveal" :class="{ 'is-long': product.name.length > 14 }">{{ product.name }}</h2>
             <p class="story-text story-reveal">{{ product.description }}</p>
-            <p class="story-price story-reveal">{{ formatPrice(product.price) }} <small>تومان</small></p>
+            <p class="story-price story-reveal">{{ priceLabel(product.price) }}</p>
             <NuxtLink :to="'/products/' + product.slug" class="story-cta story-reveal">
               <span>کشف این قطعه</span>
               <ArrowLeft :size="18" :stroke-width="1.4" />
