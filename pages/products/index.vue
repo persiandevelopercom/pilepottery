@@ -144,15 +144,19 @@ onMounted(async () => {
           gsap.set(photoOf(panel), { scale: 1.04, transformOrigin: '50% 46%' })
           if (index === 0) gsap.set(plateOf(panel), rest)
           else {
-            gsap.set(panel, { yPercent: 101 })
+            // The stylesheet parks later cards at translateY(101%) before JS.
+            // Clear that first: GSAP otherwise records it as both yPercent and y,
+            // so the card settles a full viewport too low and never covers the previous scene.
+            panel.style.transform = 'none'
+            gsap.set(panel, { y: 0, yPercent: 101 })
             gsap.set(plateOf(panel), { ...rest, y: 72, scale: 0.86, opacity: 0, rotationY: 16, rotationZ: 6 })
             gsap.set(copyOf(panel), { y: 42, opacity: 0 })
           }
         })
 
-        const HOLD = 1
-        const ZOOM = 1.08
-        const PHASE = 1.78
+        const HOLD = 0.7
+        const ZOOM = 0.9
+        const PHASE = 1.28
         const anchors = [0]
         let cursor = 0
         const timeline = gsap.timeline({
@@ -160,7 +164,7 @@ onMounted(async () => {
           scrollTrigger: {
             trigger: root,
             start: 'top top',
-            end: () => '+=' + Math.round(Math.max(window.innerHeight, 680) * (panels.length * 1.2 + 0.2)),
+            end: () => '+=' + Math.round(Math.max(window.innerHeight, 680) * (panels.length * 1.05 + 0.25)),
             pin: true,
             scrub: 0.6,
             anticipatePin: 1,
@@ -177,7 +181,7 @@ onMounted(async () => {
               for (let i = 1; i < anchors.length; i++) {
                 const previous = anchors[i - 1] ?? 0
                 const next = anchors[i] ?? previous
-                if (time >= previous + (next - previous) * 0.8) index = i
+                if (time >= previous + (next - previous) * 0.86) index = i
               }
               if (index !== activeIndex.value) setActive(index)
             }
@@ -214,9 +218,9 @@ onMounted(async () => {
           if (orbit) timeline.to(orbit, { scale: 1.35, opacity: 0, duration: 0.45, ease: 'power2.in' }, zoom)
 
           const next = panels[index + 1]!
-          timeline.to(next, { yPercent: 0, duration: 1.05, ease: 'power3.inOut' }, `${zoom}+=0.64`)
-          timeline.to(plateOf(next), { ...rest, duration: 0.92, ease: 'power3.out' }, `${zoom}+=0.8`)
-          timeline.to(copyOf(next), { y: 0, opacity: 1, stagger: 0.06, duration: 0.5, ease: 'power2.out' }, `${zoom}+=0.96`)
+          timeline.to(next, { yPercent: 0, y: 0, duration: 0.82, ease: 'power3.inOut' }, `${zoom}+=0.28`)
+          timeline.to(plateOf(next), { ...rest, duration: 0.72, ease: 'power3.out' }, `${zoom}+=0.46`)
+          timeline.to(copyOf(next), { y: 0, opacity: 1, stagger: 0.06, duration: 0.42, ease: 'power2.out' }, `${zoom}+=0.58`)
 
           cursor = zoomAt + PHASE
           timeline.addLabel(`land-${index + 1}`, cursor)
