@@ -14,7 +14,9 @@ export default defineNuxtPlugin(() => {
 
   function start() {
     if (lenis || reducedMotion.matches) return
-    lenis = new Lenis({ lerp: 0.08, smoothWheel: true, syncTouch: false })
+    // Native smooth-scroll fights Lenis and makes the scrub feel sticky.
+    document.documentElement.style.scrollBehavior = 'auto'
+    lenis = new Lenis({ lerp: 0.078, smoothWheel: true, wheelMultiplier: 0.9, syncTouch: false })
     lenis.on('scroll', syncTriggers)
     gsap.ticker.add(tick)
     gsap.ticker.lagSmoothing(0)
@@ -25,6 +27,7 @@ export default defineNuxtPlugin(() => {
     lenis.off('scroll', syncTriggers)
     lenis.destroy()
     lenis = null
+    document.documentElement.style.scrollBehavior = ''
   }
   const onMotionChange = () => reducedMotion.matches ? stop() : start()
   reducedMotion.addEventListener('change', onMotionChange)
@@ -39,10 +42,13 @@ export default defineNuxtPlugin(() => {
     provide: {
       gsap,
       ScrollTrigger,
-      galleryScrollTo: (target: number | HTMLElement) => {
-        if (lenis) lenis.scrollTo(target, { duration: 1.3 })
-        else if (typeof target === 'number') window.scrollTo({ top: target, behavior: reducedMotion.matches ? 'instant' : 'smooth' })
-        else target.scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth' })
+      galleryScrollTo: (target: number | HTMLElement, offset = 0) => {
+        if (lenis) lenis.scrollTo(target, { offset, duration: 1.35 })
+        else if (typeof target === 'number') window.scrollTo({ top: target + offset, behavior: reducedMotion.matches ? 'instant' : 'smooth' })
+        else {
+          const top = target.getBoundingClientRect().top + window.scrollY + offset
+          window.scrollTo({ top, behavior: reducedMotion.matches ? 'instant' : 'smooth' })
+        }
       }
     }
   }
