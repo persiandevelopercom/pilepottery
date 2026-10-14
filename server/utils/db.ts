@@ -36,7 +36,7 @@ export function db() {
       ['earth-mug', 'ماگ آوید', 'mug', 'یک همراه گرم برای مکث‌های کوچک روزانه. هر ماگ با دست شکل گرفته و رد لطیف خاک را در خود نگه داشته است.', 485000, 12, '/images/mug.jpg', 1],
       ['espresso-shot', 'شات خاکی', 'shot', 'کوچک، صمیمی و پر از حس. برای شروع‌های آرام و قهوه‌هایی که باید با حوصله نوشید.', 295000, 18, '/images/shot.jpg', 1],
       ['cup-coaster-set', 'ست لیوان و زیرلیوانی رُها', 'set', 'هماهنگی ساده‌ی فرم و رنگ؛ یک ست دست‌ساز برای میزهایی که قصه دارند.', 765000, 8, '/images/set.jpg', 1],
-      ['gift-box', 'پک هدیه‌ی مهر', 'gift', 'هدیه‌ای از جنس توجه. مجموعه‌ای از سفال‌های دست‌ساز، با بسته‌بندی ساده و دلنشین.', 1090000, 6, '/images/gift.jpg', 0],
+      ['gift-box', 'پک هدیه‌ی مهر', 'gift', 'هدیه‌ای از جنس توجه. مجموعه‌ای از سرامیک‌های دست‌ساز، با بسته‌بندی ساده و دلنشین.', 1090000, 6, '/images/gift.jpg', 0],
       ['clay-clock', 'ساعت آرام', 'clock', 'زمان را کمی آرام‌تر ببینید. ساعتی سرامیکی با بافتی زنده و فرمی یگانه.', 1280000, 4, '/images/clock.jpg', 0],
       ['wall-relief', 'دیوارکوب نقش', 'wall-art', 'تکه‌ای هنر برای دیوار خانه؛ ساخته‌شده با دست، الهام‌گرفته از فرم‌های طبیعت.', 890000, 7, '/images/wall-art.jpg', 0]
     ]
@@ -69,6 +69,9 @@ export function db() {
     for (const [slug, name, category, description, price, stock, image, featured] of catalogue)
       insertMissing.run({ slug, name, category, description, price, stock, image, featured })
   })()
+  // The studio is ceramic, not clay. Refresh copy that was stored with the old word.
+  instance.prepare("UPDATE products SET description = REPLACE(description, 'سفال', 'سرامیک') WHERE description LIKE '%سفال%'").run()
+  instance.prepare("UPDATE products SET name = REPLACE(name, 'سفال', 'سرامیک') WHERE name LIKE '%سفال%'").run()
   return instance
 }
 export const publicProducts = () => db().prepare('SELECT * FROM products WHERE active = 1 ORDER BY featured DESC, id ASC').all() as Product[]

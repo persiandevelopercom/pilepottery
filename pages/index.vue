@@ -1,20 +1,151 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowUpLeft, Sparkles, PackageCheck, HandHeart } from 'lucide-vue-next'
 import type { Product } from '../shared'
-import { categories } from '../shared'
+
+const pieces = [
+  { slug: 'mug-marble', name: 'ماگ سفید مرمری' },
+  { slug: 'wall-sunflower', name: 'دیوارکوب گل زرد' },
+  { slug: 'wall-crow', name: 'بشقاب دیوارکوب کلاغ' },
+  { slug: 'clock-butterfly', name: 'ساعت دیواری پروانه' },
+  { slug: 'wall-rose', name: 'دیوارکوب گل سرخ' },
+  { slug: 'shot-trio-ridged', name: 'ست سه‌تایی شات شیاردار' },
+  { slug: 'shot-pair-sage-blue', name: 'ست دوتایی شات سبز و آبی' },
+  { slug: 'shot-pair-clay-green', name: 'ست دوتایی شات قهوه‌ای و سبز' },
+  { slug: 'ashtray-bloom', name: 'زیرسیگاری گل‌دار' },
+  { slug: 'shot-tray-set', name: 'ست شات با سینی' },
+  { slug: 'gift-floral-set', name: 'ست هدیه' }
+]
+
 const { data: products } = await useFetch<Product[]>('/api/products')
-const featured = computed(() => products.value?.filter(p => p.featured).slice(0, 3) || [])
+const cards = computed(() => pieces.map(piece => {
+  const product = products.value?.find(item => item.slug === piece.slug)
+  return { slug: piece.slug, name: product?.name || piece.name, image: product?.image || '' }
+}))
+
+const gl = ref<HTMLCanvasElement | null>(null)
+const cta = ref<HTMLElement | null>(null)
+const track = ref<HTMLElement | null>(null)
+const walkQuery = '(min-width: 901px) and (prefers-reduced-motion: no-preference)'
+let stopWalk: (() => void) | undefined
+let generation = 0
+
+async function syncWalk(tries = 0) {
+  const on = window.matchMedia(walkQuery).matches
+  if (!on) {
+    generation += 1
+    stopWalk?.()
+    stopWalk = undefined
+    return
+  }
+  if (!gl.value || !track.value) {
+    if (tries < 12) requestAnimationFrame(() => syncWalk(tries + 1))
+    return
+  }
+  if (stopWalk) return
+  const token = ++generation
+  const { mountGallery } = await import('../utils/gallery.js')
+  if (token !== generation || !gl.value || !track.value) return
+  const names: Record<string, string> = {}
+  const images: Record<string, string> = {}
+  for (const product of products.value || []) {
+    names[product.slug] = product.name
+    images[product.slug] = product.image
+  }
+  stopWalk = await mountGallery({ canvas: gl.value, cta: cta.value, track: track.value, names, images })
+}
+
+let media: MediaQueryList | undefined
+function onMotionChange() { syncWalk() }
+
+onMounted(() => {
+  media = window.matchMedia(walkQuery)
+  media.addEventListener('change', onMotionChange)
+  syncWalk()
+})
+
+onBeforeUnmount(() => {
+  generation += 1
+  media?.removeEventListener('change', onMotionChange)
+  stopWalk?.()
+  stopWalk = undefined
+})
+
+useSeoMeta({
+  title: 'پیله پاتری | گالری',
+  description: 'گالری پیله پاتری؛ هر قطعه یک قصه و هر قصه برای شماست.'
+})
 </script>
+
 <template>
-  <div>
-    <section class="hero"><div class="hero-copy"><div class="hero-copy-inner"><span class="eyebrow">HANDMADE WITH SOUL</span><h1>زیبایی،<br>در <em>سادگیِ</em> دست‌هاست.</h1><p>هر تکه سفال، روایتی‌ست از خاک و خیال. ساخته شده برای لحظه‌هایی که می‌خواهید کمی بیشتر در آن‌ها بمانید.</p><NuxtLink to="/products" class="btn">دیدن مجموعه‌ها <ArrowLeft :size="18" :stroke-width="1.5"/></NuxtLink><div class="hero-bottom"><span class="hero-line"></span><span>اشیائی برای زندگیِ آرام‌تر</span><span class="hero-index">01 / 03</span></div></div></div><div class="hero-art"><img src="/images/hero.jpg" alt="سفال دست‌ساز پیله پاتری در نور گرم"/><div class="hero-image-caption">A quiet kind of beautiful <span>—</span> PILE POTTERY</div></div></section>
-    <section class="intro-strip"><div class="container strip-inner"><span><HandHeart :size="22" :stroke-width="1.3"/> ساخته‌شده با دست</span><i></i><span><Sparkles :size="21" :stroke-width="1.3"/> هر قطعه، یکتا</span><i></i><span><PackageCheck :size="22" :stroke-width="1.3"/> بسته‌بندی با دقت و عشق</span></div></section>
-    <section class="container featured-section"><div class="section-top"><div><span class="eyebrow">THE COLLECTION</span><h2 class="section-heading">محبوب‌ترین‌های <em>پیله پاتری</em></h2><p class="section-sub">قطعه‌هایی که قرار است بخشی از خاطره‌های روزمره‌ی شما شوند.</p></div><NuxtLink to="/products" class="text-link">دیدن همه‌ی محصولات <ArrowLeft :size="17"/></NuxtLink></div><div class="product-grid"><ProductCard v-for="p in featured" :key="p.id" :product="p"/></div></section>
-    <section class="categories-section"><div class="container"><div class="section-top category-top"><div><span class="eyebrow">EXPLORE BY CATEGORY</span><h2 class="section-heading">به دنبال چه می‌گردید؟</h2></div><p class="section-sub">از یک ماگ برای صبح‌های آرام تا هدیه‌ای برای آدم‌های عزیزتان؛ چیزی که دوستش دارید را پیدا کنید.</p></div><div class="category-grid"><NuxtLink v-for="(category, i) in categories" :key="category.key" :to="'/products?category=' + category.key" class="category-tile"><span class="category-number">0{{ i + 1 }}</span><span class="category-title">{{ category.name }}</span><span class="category-english">{{ category.english }}</span><ArrowUpLeft class="category-arrow" :size="21" :stroke-width="1.3"/></NuxtLink></div></div></section>
-    <section id="story" class="story-section"><div class="container story-grid"><div class="story-image"><img src="/images/wall-art.jpg" alt="دیوارکوب سفالی دست‌ساز" loading="lazy"/><span>Art in every detail.</span></div><div class="story-copy"><span class="eyebrow">THE STORY BEHIND PILE</span><h2>از خاک شروع می‌شود،<br><em>به خانه‌ی شما می‌رسد.</em></h2><p>پیله پاتری جایی‌ست برای دوست داشتن چیزهای ساده. باور داریم زیبایی واقعی در رد دست‌ها، در تفاوت‌های کوچک و در قصه‌ی پشت هر شیء زندگی می‌کند.</p><p>هر قطعه با حوصله شکل می‌گیرد تا نه فقط یک وسیله، که حسی خوب به فضای شما اضافه کند.</p><NuxtLink to="/products" class="text-link">کشف دنیای پیله پاتری <ArrowLeft :size="17"/></NuxtLink><div class="story-seal">made<br>with<br>care ✳</div></div></div></section>
-    <section class="quote-section"><span class="quote-star">✳</span><p>برای لحظه‌هایی که ساده‌اند،<br>اما <em>همیشه می‌مانند.</em></p><span class="quote-sign">PILE POTTERY — HANDCRAFTED WITH HEART</span></section>
+  <div class="home">
+    <section class="walk" aria-label="گالری">
+      <ClientOnly>
+        <canvas ref="gl" class="gl" />
+      </ClientOnly>
+      <div class="vignette" aria-hidden="true" />
+      <header class="walk-bar">
+        <div class="walk-brand">پیله پاتری</div>
+        <nav class="walk-nav" aria-label="منوی گالری">
+          <NuxtLink to="/" class="on">گالری</NuxtLink>
+          <NuxtLink to="/products">فروشگاه</NuxtLink>
+          <NuxtLink to="/#story">درباره‌ی ما</NuxtLink>
+          <NuxtLink to="/#contact">ارتباط</NuxtLink>
+        </nav>
+        <div class="walk-lang" dir="ltr">FA</div>
+      </header>
+      <div ref="cta" class="walk-cta">
+        <h2>هر قطعه، روایتی از خاک</h2>
+        <p>پایان بازدید</p>
+        <NuxtLink to="/products">مشاهده‌ی همه‌ی آثار</NuxtLink>
+      </div>
+      <div ref="track" class="walk-track" />
+    </section>
+
+    <section class="fallback" aria-label="آثار پیله پاتری">
+      <img class="fallback-logo" src="/gallery/img/logo.png" alt="نشان پیله پاتری" />
+      <p class="fallback-slogan">هر قطعه یک قصه و هر قصه برای شماست</p>
+      <p class="fallback-slogan">نبوغ در سادگی‌ست</p>
+      <div class="fallback-grid">
+        <NuxtLink v-for="card in cards" :key="card.slug" :to="'/products/' + card.slug" class="fallback-card">
+          <img v-if="card.image" :src="card.image" :alt="card.name" />
+          <span>{{ card.name }}</span>
+        </NuxtLink>
+      </div>
+      <NuxtLink to="/products" class="fallback-cta">مشاهده‌ی همه‌ی آثار</NuxtLink>
+    </section>
   </div>
 </template>
+
 <style scoped>
-.hero{display:grid;grid-template-columns:49% 51%;min-height:610px;background:#e1e4e3}.hero-copy{display:flex;align-items:center;justify-content:flex-start;padding:40px clamp(38px,8.1vw,150px) 30px 40px}.hero-copy-inner{max-width:530px;width:100%}.hero h1{font-size:clamp(45px,5vw,76px);font-weight:500;letter-spacing:-.065em;line-height:1.53;margin:27px 0 18px}.hero h1 em,.story-copy h2 em,.quote-section em{font-style:normal;color:var(--rust)}.hero-copy p{font-size:15px;line-height:2.35;color:#686c60;max-width:420px;margin:0 0 34px}.hero-art{position:relative;min-height:610px;overflow:hidden}.hero-art img{width:100%;height:100%;object-fit:cover;object-position:35% center;position:absolute;inset:0}.hero-image-caption{position:absolute;left:32px;bottom:25px;direction:ltr;color:#fff;font:italic 15px Georgia,serif;letter-spacing:.03em;text-shadow:0 1px 6px #0007}.hero-image-caption span{padding:0 6px}.hero-bottom{display:flex;align-items:center;gap:15px;margin-top:85px;color:#777a6c;font-size:11px}.hero-line{width:42px;height:1px;background:#a7a99e}.hero-index{margin-right:auto;font-family:Georgia,serif;direction:ltr}.intro-strip{border-bottom:1px solid var(--line);background:#eeefed}.strip-inner{height:104px;display:flex;align-items:center;justify-content:space-around}.strip-inner span{display:flex;align-items:center;gap:15px;color:#555b4c;font-size:13px}.strip-inner i{height:30px;width:1px;background:var(--line)}.featured-section{padding-top:106px;padding-bottom:115px}.section-top{display:flex;align-items:end;justify-content:space-between;margin-bottom:36px;gap:20px}.section-top .section-sub{margin-bottom:0}.section-top .text-link{margin-bottom:8px;white-space:nowrap}.categories-section{background:#e5e8e7;padding:103px 0 110px}.category-top{align-items:end;margin-bottom:42px}.category-top .section-sub{max-width:340px;margin:0}.category-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid #cbcfc1;border-right:1px solid #cbcfc1}.category-tile{height:170px;border-left:1px solid #cbcfc1;border-bottom:1px solid #cbcfc1;padding:23px 27px;display:flex;flex-direction:column;position:relative;transition:background .2s}.category-tile:hover{background:#d8dddc}.category-number{font:12px Georgia,serif;color:#a09f90;direction:ltr;text-align:right}.category-title{font-size:20px;font-weight:500;margin-top:auto}.category-english{font:12px Georgia,serif;color:#8b8e7e;direction:ltr;text-align:right;margin-top:4px}.category-arrow{position:absolute;left:27px;bottom:29px;color:var(--rust)}.story-section{padding:120px 0;background:var(--paper)}.story-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(55px,9vw,150px);align-items:center}.story-image{position:relative;background:var(--stone);aspect-ratio:1/1.03}.story-image img{height:100%;width:100%;object-fit:cover}.story-image span{position:absolute;right:-24px;bottom:25px;writing-mode:vertical-rl;transform:rotate(180deg);font:italic 14px Georgia,serif;color:var(--rust)}.story-copy{position:relative;padding:30px 0}.story-copy h2{font-size:clamp(31px,3.8vw,52px);font-weight:500;line-height:1.65;letter-spacing:-.04em;margin:22px 0}.story-copy p{color:#707469;font-size:14px;line-height:2.5;max-width:450px}.story-copy .text-link{margin-top:25px}.story-seal{position:absolute;left:0;bottom:-45px;width:97px;height:97px;border:1px solid #b5b19f;border-radius:50%;display:grid;place-content:center;text-align:center;font:italic 13px/1.3 Georgia,serif;transform:rotate(-16deg);color:var(--rust)}.quote-section{text-align:center;background:#dfe3e2;padding:95px 15px 105px}.quote-star{color:var(--rust);font-size:28px}.quote-section p{font-size:clamp(28px,4vw,51px);font-weight:400;line-height:1.8;letter-spacing:-.04em;margin:19px 0}.quote-sign{font:11px Georgia,serif;color:#898c7e;letter-spacing:.18em}@media(max-width:900px){.hero{min-height:500px}.hero-art{min-height:500px}.hero-copy{padding-right:40px}.hero h1{font-size:47px}.hero-bottom{margin-top:50px}.story-grid{gap:55px}}@media(max-width:650px){.hero{display:flex;flex-direction:column}.hero-copy{order:2;padding:38px 24px 30px}.hero-art{order:1;min-height:360px}.hero h1{font-size:44px;margin:15px 0}.hero-copy p{font-size:13px;margin-bottom:22px}.hero-bottom{margin-top:38px}.hero-image-caption{font-size:11px}.strip-inner{height:auto;padding:20px 0;gap:12px;flex-wrap:wrap}.strip-inner span{font-size:11px;gap:6px}.strip-inner i{display:none}.featured-section{padding-top:66px;padding-bottom:75px}.section-top{display:block;margin-bottom:25px}.section-top .text-link{margin-top:18px}.section-heading{font-size:30px}.categories-section{padding:65px 0 72px}.category-top .section-sub{margin-top:12px}.category-grid{grid-template-columns:repeat(2,1fr)}.category-tile{height:137px;padding:16px}.category-title{font-size:15px}.category-arrow{left:14px;bottom:22px;width:17px}.story-section{padding:65px 0}.story-grid{grid-template-columns:1fr;gap:20px}.story-image{aspect-ratio:1.15/1}.story-image span{right:8px;bottom:12px;color:white}.story-copy h2{font-size:31px}.story-seal{bottom:0;width:70px;height:70px;font-size:10px}.quote-section{padding:70px 15px}}
+.home { background: #e8e4de; color: #2f3a45; font-family: Farhang, Vazirmatn, sans-serif; }
+.walk { display: none; }
+.gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
+.vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(40, 36, 32, .18) 100%); }
+.walk-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 2; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 48px; }
+.walk-bar::after { content: ""; position: absolute; left: 48px; right: 48px; bottom: 0; height: 1px; background: rgba(47, 58, 69, .25); }
+.walk-brand { font-weight: 500; font-size: 24px; }
+.walk-nav { display: flex; gap: 44px; font-weight: 300; font-size: 15px; }
+.walk-nav .on { color: #a88a6a; }
+.walk-lang { font-weight: 300; font-size: 13px; }
+.walk-cta { position: fixed; left: 24%; top: 52%; z-index: 2; transform: translate(-50%, -50%); text-align: center; opacity: 0; pointer-events: none; color: #2f3a45; }
+.walk-cta h2 { font-weight: 300; font-size: 40px; margin: 0 0 10px; }
+.walk-cta p { font-size: 16px; color: #70543a; margin: 0 0 28px; }
+.walk-cta a { display: inline-block; padding: 14px 38px; border: 1px solid #be9c68; color: #5d4428; background: rgba(244, 240, 233, .55); font-size: 18px; }
+.walk-track { height: 1400vh; }
+.fallback { display: block; background: #f2ede6; color: #2f3a45; padding: 48px 22px 72px; text-align: center; }
+.fallback-logo { width: 92px; height: auto; margin: 12px auto 28px; }
+.fallback-slogan { font-weight: 300; font-size: clamp(28px, 6vw, 40px); line-height: 1.7; margin: 0 auto 8px; max-width: 16em; }
+.fallback-slogan + .fallback-slogan { margin-bottom: 36px; }
+.fallback-slogan::after { content: ""; display: block; width: 72px; height: 2px; margin: 14px auto 0; background: #a88a6a; }
+.fallback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 12px; text-align: right; }
+.fallback-card { color: inherit; }
+.fallback-card img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #e6e4e0; }
+.fallback-card span { display: block; margin-top: 8px; font-size: 14px; font-weight: 400; }
+.fallback-cta { display: inline-block; margin-top: 36px; padding: 14px 28px; border: 1px solid #a88a6a; color: #5d4428; font-size: 16px; }
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .walk { display: block; }
+  .fallback { display: none; }
+}
+@media (min-width: 700px) {
+  .fallback-grid { grid-template-columns: repeat(3, 1fr); gap: 28px 18px; }
+}
 </style>
