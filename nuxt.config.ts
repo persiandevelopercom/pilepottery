@@ -5,9 +5,9 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'fa', dir: 'rtl' },
-      title: 'پیله پاتری | سفال برای لحظه‌های ماندگار',
+      title: 'پیله پاتری | سرامیک برای لحظه‌های ماندگار',
       meta: [
-        { name: 'description', content: 'پیله پاتری؛ مجموعه‌ای از سفال‌های دست‌ساز برای لحظه‌های ساده و ماندگار زندگی.' },
+        { name: 'description', content: 'پیله پاتری؛ مجموعه‌ای از سرامیک‌های دست‌ساز برای لحظه‌های ساده و ماندگار زندگی.' },
         { name: 'theme-color', content: '#f5f2ee' },
         { property: 'og:site_name', content: 'پیله پاتری' },
         { property: 'og:type', content: 'website' }

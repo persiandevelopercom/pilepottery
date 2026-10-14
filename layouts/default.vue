@@ -6,8 +6,8 @@ const route = useRoute()
 watch(() => route.fullPath, () => { mobileOpen.value = false })
 </script>
 <template>
-  <div class="site-shell" :class="{ 'story-shell': route.path === '/products' }">
-    <div v-if="route.path !== '/products'" class="announcement">سفالی از دل خاک، برای لحظه‌های شما <span>✦</span> ارسال به سراسر ایران</div>
+  <div class="site-shell" :class="{ 'story-shell': route.path === '/products', 'home-shell': route.path === '/' }">
+    <div v-if="route.path !== '/products'" class="announcement">سرامیکی از دل خاک، برای لحظه‌های شما <span>✦</span> ارسال به سراسر ایران</div>
     <header class="site-header" :class="{ 'story-header': route.path === '/products' }">
       <div class="container header-inner">
         <NuxtLink to="/" class="brand" aria-label="پیله پاتری، صفحه اصلی"><span class="brand-mark">پیله پاتری<span class="brand-dot">.</span></span><small>PILE POTTERY STUDIO</small></NuxtLink>
@@ -17,6 +17,6 @@ watch(() => route.fullPath, () => { mobileOpen.value = false })
       <nav v-if="mobileOpen" class="mobile-nav" aria-label="منوی موبایل"><NuxtLink to="/">خانه</NuxtLink><NuxtLink to="/products">فروشگاه</NuxtLink><NuxtLink to="/#story">درباره‌ی پیله پاتری</NuxtLink><NuxtLink to="/#contact">ارتباط با ما</NuxtLink></nav>
     </header>
     <main><slot /></main>
-    <footer id="contact" class="footer"><div class="container footer-top"><div class="footer-about"><NuxtLink to="/" class="brand brand-light"><span class="brand-mark">پیله پاتری<span class="brand-dot">.</span></span><small>PILE POTTERY STUDIO</small></NuxtLink><p>از خاک تا خانه؛ هر قطعه با عشق و دستانی صبور ساخته می‌شود تا گوشه‌ای از زندگی شما را گرم‌تر کند.</p></div><div class="footer-col"><h4>گشت‌وگذار</h4><NuxtLink to="/products">همه‌ی محصولات</NuxtLink><NuxtLink to="/#story">داستان ما</NuxtLink><NuxtLink to="/cart">سبد خرید</NuxtLink></div><div class="footer-col"><h4>همراه پیله پاتری باشید</h4><p>برای سفارش‌های خاص و پرسش‌های شما، از راه شبکه‌های اجتماعی کنار شما هستیم.</p><span class="social-chip"><Instagram :size="17"/> Instagram</span></div></div><div class="container footer-bottom"><span>© {{ new Date().getFullYear() }} پیله پاتری. ساخته‌شده با عشق.</span><a href="https://pilepottery.ir/" class="footer-domain" dir="ltr">pilepottery.ir</a></div></footer>
+    <footer id="contact" class="footer"><div class="container footer-top"><div class="footer-about" id="story"><NuxtLink to="/" class="brand brand-light"><span class="brand-mark">پیله پاتری<span class="brand-dot">.</span></span><small>PILE POTTERY STUDIO</small></NuxtLink><p>از خاک تا خانه؛ هر قطعه با عشق و دستانی صبور ساخته می‌شود تا گوشه‌ای از زندگی شما را گرم‌تر کند.</p></div><div class="footer-col"><h4>گشت‌وگذار</h4><NuxtLink to="/products">همه‌ی محصولات</NuxtLink><NuxtLink to="/#story">داستان ما</NuxtLink><NuxtLink to="/cart">سبد خرید</NuxtLink></div><div class="footer-col"><h4>همراه پیله پاتری باشید</h4><p>برای سفارش‌های خاص و پرسش‌های شما، از راه شبکه‌های اجتماعی کنار شما هستیم.</p><span class="social-chip"><Instagram :size="17"/> Instagram</span></div></div><div class="container footer-bottom"><span>© {{ new Date().getFullYear() }} پیله پاتری. ساخته‌شده با عشق.</span><a href="https://pilepottery.ir/" class="footer-domain" dir="ltr">pilepottery.ir</a></div></footer>
   </div>
 </template>
